@@ -2,10 +2,10 @@
   "LSTM": {
     "FEATURES": 39,
     "HIDDEN": 512,
-    "BATCH_SIZE": 16,
-    "DEV_PATH": "/home/jovyan/work/tmp/short_dev/",
-    "TRAIN_PATH": "/home/jovyan/work/tmp/short_train/",
-    "LOG_PATH": "/home/jovyan/work/tmp/log/"
+    "BATCH_SIZE": 7,
+    "DEV_PATH": "/home/minhhieu/My Projects/Compressed Speech Data/command_aHieu/MFCC_39_16khz/dev/",
+    "TRAIN_PATH": "/home/minhhieu/My Projects/Compressed Speech Data/command_aHieu/MFCC_39_16khz/train/",
+    "LOG_PATH": "/home/minhhieu/My Projects/Compressed Speech Data/command_aHieu/MFCC_39_16khz/log/"
   },
   "INFERENCE": {
     "PB_PATH": "/Path/and/file/name/of/your/pb/file",

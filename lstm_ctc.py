@@ -17,13 +17,15 @@ FIRST_INDEX = ord('a') - 1
 
 # mfcc features
 num_features = c.LSTM.FEATURES
-# Accounting the 0th index +  space + blank label = 28 characters
-num_classes = ord('z') - ord('a') + 1 + 1 + 1
+# Accounting the 0th index +  space + blank label
+# Processing Vietnamese speech require different character range
+
+num_classes = 7929 - ord('a') + 1 + 1 + 1
 
 # Hyper-parameters
 num_hidden = c.LSTM.HIDDEN
 batch_size = c.LSTM.BATCH_SIZE
-num_epochs = 100000
+num_epochs = 3000
 num_layers = 1
 
 # Calculate ler every [num_steps] batch
@@ -160,6 +162,8 @@ with tf.Session(graph=graph) as sess:
         train_list = shuffle_every_epoch(Train_DIR)
         # Total size of training samples
         num_examples = len(train_list)
+#         print(train_list)
+#         print(num_examples)
         # Go through all samples for each epoch
         num_batches_per_epoch = int(num_examples / batch_size)
         # Shuffle validation samples and get their npz path
