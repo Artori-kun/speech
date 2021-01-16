@@ -1,0 +1,19 @@
+TensorFlow 2.0 Upgrade Script
+-----------------------------
+Converted 1 files
+Detected 0 issues that require attention
+--------------------------------------------------------------------------------
+================================================================================
+Detailed log follows:
+
+================================================================================
+--------------------------------------------------------------------------------
+Processing file 'lstm_pb_recognize.py'
+ outputting to './upgraded/lstm_pb_recognize_upgrade.py'
+--------------------------------------------------------------------------------
+
+26:5: INFO: Renamed 'tf.gfile.FastGFile' to 'tf.compat.v1.gfile.FastGFile'
+27:16: INFO: Renamed 'tf.GraphDef' to 'tf.compat.v1.GraphDef'
+31:5: INFO: Renamed 'tf.Session' to 'tf.compat.v1.Session'
+--------------------------------------------------------------------------------
+
