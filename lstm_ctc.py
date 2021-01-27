@@ -1,15 +1,13 @@
 from __future__ import print_function
-import time
-import os, sys
-import random
-import json
 
-import numpy as np
+import json
+import time
+
 import tensorflow as tf
 
 from constants import c
-from file_logger import FileLogger
 from data import shuffle_every_epoch, next_batch_training
+from file_logger import FileLogger
 
 # Parameters for index to string
 SPACE_TOKEN = '<space>'
@@ -17,7 +15,7 @@ SPACE_INDEX = 0
 FIRST_INDEX = ord('a') - 1
 
 # decode dictionary
-data_dir = '/home/minhhieu/My Projects/Compressed Speech Data/full_command_data'
+data_dir = '/home/minhhiu/MyProjects/Compressed Speech Data/full_command_data'
 with open('encode_decode.json', 'r') as loadlabel:
     label_dic = json.load(loadlabel)
 
@@ -32,6 +30,8 @@ def get_key(val):
 
 
 ######
+def make_cell(hidden_layer):
+    return tf.compat.v1.nn.rnn_cell.GRUCell(hidden_layer)
 
 
 # mfcc features
@@ -44,8 +44,8 @@ num_classes = label_dic["char_num"] + 1
 # Hyper-parameters
 num_hidden = c.LSTM.HIDDEN
 batch_size = c.LSTM.BATCH_SIZE
-num_epochs = 40
-num_layers = 1
+num_epochs = 200
+num_layers = 4
 
 # Calculate ler every [num_steps] batch
 num_steps = 20
@@ -90,9 +90,9 @@ with graph.as_default():
     # Can be:
     #   tf.nn.rnn_cell.RNNCell
     #   tf.nn.rnn_cell.GRUCell
-    cell = tf.compat.v1.nn.rnn_cell.LSTMCell(num_hidden, state_is_tuple=True)
+    # cell = tf.compat.v1.nn.rnn_cell.LSTMCell(num_hidden, state_is_tuple=True)
     # Stacking rnn cells
-    stack = tf.compat.v1.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=True)
+    stack = tf.compat.v1.nn.rnn_cell.MultiRNNCell([make_cell(num_hidden) for _ in range(num_layers)], state_is_tuple=True)
     # The second output is the last state and we will no use that
     outputs, _ = tf.compat.v1.nn.dynamic_rnn(stack, inputs, seq_len, dtype=tf.float32, time_major=False)
     # Inputs shape
@@ -112,7 +112,7 @@ with graph.as_default():
     b = tf.Variable(tf.constant(0., shape=[num_classes]))
     # Add dropout for W
     keep_prob = tf.compat.v1.placeholder(tf.float32)
-    W_drop = tf.nn.dropout(W, 1 - (keep_prob))
+    W_drop = tf.nn.dropout(W, 1 - keep_prob)
 
     # Doing the affine projection
     logits = tf.matmul(outputs, W_drop) + b
@@ -192,6 +192,7 @@ with tf.compat.v1.Session(graph=graph) as sess:
             # Get batch samples for training
             train_inputs, train_targets, train_seq_len, original = next_batch_training(batch_size,
                                                                                        train_list, batch, Train_DIR)
+            # print(train_inputs.shape)
             # Feed_dict for training
             feed = {inputs: train_inputs,
                     targets: train_targets,
@@ -245,8 +246,8 @@ with tf.compat.v1.Session(graph=graph) as sess:
         val_cost, val_ler = sess.run([cost, ler], feed_dict=val_feed)
 
         # Save checkpoint when the val_cost reduces.
-        if val_cost <= val_base:
-            saver.save(sess, 'lstm_model', global_step=curr_epoch)
+        if val_cost < val_base:
+            saver.save(sess, './checkpoints/lstm_model', global_step=curr_epoch)
             val_base = val_cost
 
         # Decoding
@@ -268,7 +269,7 @@ with tf.compat.v1.Session(graph=graph) as sess:
                                  val_original[-1],
                                  str_decoded])
 
-        # file_writer = tf.summary.SummaryWriter('/home/minhhieu/My Projects/speech/logs', sess.graph)
+        # file_writer = tf.summary.SummaryWriter('/home/minhhiu/My Projects/speech/logs', sess.graph)
 
         print('Original val: %s' % val_original[-1])
         print('Decoded val: %s' % str_decoded)

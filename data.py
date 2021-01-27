@@ -17,6 +17,7 @@ def shuffle_every_epoch(data_path):
     random.shuffle(alist)
     return alist
 
+
 def next_batch_training(batch_size, trainlist, batch, DIR):
     """Return batch for training.
         Args:
@@ -36,8 +37,8 @@ def next_batch_training(batch_size, trainlist, batch, DIR):
     seq_len = []
     maxlen = 0
     num_features = 39
-    for file in trainlist[batch_size*batch:batch_size*(batch+1)]:
-        datafile = np.load(os.path.join(DIR,file))
+    for file in trainlist[batch_size * batch:batch_size * (batch + 1)]:
+        datafile = np.load(os.path.join(DIR, file))
         inputs_batch.append(datafile['data_in'])
         targets.append(datafile['target'])
         seq_len.append(datafile['seq_len'][0])
@@ -46,13 +47,15 @@ def next_batch_training(batch_size, trainlist, batch, DIR):
             maxlen = datafile['seq_len'][0]
     # Pad the inputs to the maxlen with 0s
     for i in range(batch_size):
-        inputs_batch[i] = np.pad(inputs_batch[i],((0,maxlen-len(inputs_batch[i])),(0,0)), mode='constant', constant_values=0)
+        inputs_batch[i] = np.pad(inputs_batch[i], ((0, maxlen - len(inputs_batch[i])), (0, 0)), mode='constant',
+                                 constant_values=0)
 
     train_inputs = np.asarray(inputs_batch)
     train_seq_len = np.asarray(seq_len)
     # Creating sparse representation to feed the placeholder
     train_targets = sparse_tuple_from(targets)
     return train_inputs, train_targets, train_seq_len, original
+
 
 def sparse_tuple_from(sequences, dtype=np.int32):
     """Create a sparse representention of x.
