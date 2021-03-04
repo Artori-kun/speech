@@ -31,7 +31,7 @@ def get_key(val):
 
 ######
 def make_cell(hidden_layer):
-    return tf.compat.v1.nn.rnn_cell.GRUCell(hidden_layer)
+    return tf.compat.v1.nn.rnn_cell.LSTMCell(hidden_layer, state_is_tuple=True)
 
 
 # mfcc features
@@ -44,8 +44,8 @@ num_classes = label_dic["char_num"] + 1
 # Hyper-parameters
 num_hidden = c.LSTM.HIDDEN
 batch_size = c.LSTM.BATCH_SIZE
-num_epochs = 200
-num_layers = 4
+num_epochs = 150
+num_layers = 3
 
 # Calculate ler every [num_steps] batch
 num_steps = 20
@@ -80,6 +80,9 @@ with graph.as_default():
     # Has size [batch_size, max_step_size, num_features], but the
     # batch_size and max_step_size can vary along each step
     inputs = tf.compat.v1.placeholder(tf.float32, [None, None, num_features], name='InputData')
+
+    print(inputs.shape)
+
     # Here we use sparse_placeholder that will generate a
     # SparseTensor required by ctc_loss op.
     targets = tf.compat.v1.sparse_placeholder(tf.int32, name='LabelData')
@@ -92,7 +95,8 @@ with graph.as_default():
     #   tf.nn.rnn_cell.GRUCell
     # cell = tf.compat.v1.nn.rnn_cell.LSTMCell(num_hidden, state_is_tuple=True)
     # Stacking rnn cells
-    stack = tf.compat.v1.nn.rnn_cell.MultiRNNCell([make_cell(num_hidden) for _ in range(num_layers)], state_is_tuple=True)
+    stack = tf.compat.v1.nn.rnn_cell.MultiRNNCell([make_cell(num_hidden) for _ in range(num_layers)],
+                                                  state_is_tuple=True)
     # The second output is the last state and we will no use that
     outputs, _ = tf.compat.v1.nn.dynamic_rnn(stack, inputs, seq_len, dtype=tf.float32, time_major=False)
     # Inputs shape
@@ -113,6 +117,7 @@ with graph.as_default():
     # Add dropout for W
     keep_prob = tf.compat.v1.placeholder(tf.float32)
     W_drop = tf.nn.dropout(W, 1 - keep_prob)
+
 
     # Doing the affine projection
     logits = tf.matmul(outputs, W_drop) + b
@@ -164,6 +169,7 @@ with graph.as_default():
     merged_summary_op = tf.compat.v1.summary.merge_all()
 
 # Start training
+clear_file = open('train_vars.txt', 'w')
 with tf.compat.v1.Session(graph=graph) as sess:
     # Run the initializer
     # Initialize the variables (i.e. assign their default value)
@@ -193,6 +199,7 @@ with tf.compat.v1.Session(graph=graph) as sess:
             train_inputs, train_targets, train_seq_len, original = next_batch_training(batch_size,
                                                                                        train_list, batch, Train_DIR)
             # print(train_inputs.shape)
+            # print(train_targets)
             # Feed_dict for training
             feed = {inputs: train_inputs,
                     targets: train_targets,
@@ -238,6 +245,8 @@ with tf.compat.v1.Session(graph=graph) as sess:
         # Validation
         val_inputs, val_targets, val_seq_len, val_original = next_batch_training(dev_size,
                                                                                  dev_list, 0, Dev_DIR)
+        # print(val_seq_len.shape)
+        # print(val_inputs.shape)
         val_feed = {inputs: val_inputs,
                     targets: val_targets,
                     seq_len: val_seq_len,
@@ -247,6 +256,11 @@ with tf.compat.v1.Session(graph=graph) as sess:
 
         # Save checkpoint when the val_cost reduces.
         if val_cost < val_base:
+            tvars = tf.compat.v1.trainable_variables()
+            with open('train_vars.txt', 'w') as file:
+                tvars = [t.eval() for t in tvars]
+                file.write(str(curr_epoch) + ':\n')
+                file.write(str(tvars[-10:]) + '\n')
             saver.save(sess, './checkpoints/lstm_model', global_step=curr_epoch)
             val_base = val_cost
 
@@ -278,3 +292,11 @@ with tf.compat.v1.Session(graph=graph) as sess:
         print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
                          val_cost, val_ler, time.time() - start))
         print(' ')
+
+        # with open('train_vars.txt', 'a') as file:
+        #     all_tensors = [tensor for op in tf.compat.v1.get_default_graph().get_operations() for tensor in op.values()]
+        #     file.write(str(curr_epoch) + '\n')
+        #     for var in all_tensors:
+        #         print(type(var))
+        #         print(var.shape)
+        #         file.write(str(var.eval(session=sess)) + '\n')

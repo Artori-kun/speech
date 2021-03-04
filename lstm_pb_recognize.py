@@ -40,37 +40,50 @@ def read_audio_from_filename(filename, sample_rate):
     return audio
 
 
-file_name = "/home/minhhiu/MyProjects/Compressed Speech Data/full_command_data/train/wav/50/"
+file_name = "/home/minhhiu/MyProjects/Compressed Speech Data/full_command_data/test/wav/54/"
 pb_PATH = c.INFERENCE.PB_PATH
 
 batch_size = 1
-num_layers = 4
+num_layers = 3
 num_classes = 43
 num_features = c.LSTM.FEATURES
 num_hidden = c.LSTM.HIDDEN
 
-inputs = mfcc(read_audio_from_filename(file_name + 'rec_1.wav', 16000), samplerate=16000, winlen=0.025, winstep=0.01,
+inputs = mfcc(read_audio_from_filename(file_name + 'rec_8.wav', 16000), samplerate=16000, winlen=0.025, winstep=0.01,
               numcep=39, nfilt=40)
 
-inputs = (inputs - m)/s
+# inputs = (inputs - m)/s
 wav_inputs = np.expand_dims(inputs, axis=0)
+data_len = np.array([len(inputs)])
+data_len = np.asarray([data_len[0]])
+# wav_inputs = np.concatenate([inputs[np.newaxis, :, :]] * batch_size)
 print(wav_inputs.shape)
 
-with open(os.path.join(file_name.replace("wav", "txt"), "rec_1.txt"), "r") as f:
+with open(os.path.join(file_name.replace("wav", "txt"), "rec_8.txt"), "r") as f:
     text = f.readline()
-    data_len = np.asarray([len(text)])
+    # data_len = np.asarray([len(text)])
 
 with tf.compat.v1.gfile.FastGFile(pb_PATH, 'rb') as f:
     graph_def = tf.compat.v1.GraphDef()
     graph_def.ParseFromString(f.read())
     tf.import_graph_def(graph_def, name='')
 
+# clear_file = open('infer_vars.txt', 'w')
 with tf.compat.v1.Session() as sess:
+
     # Set output tensor
     y = sess.graph.get_tensor_by_name('SparseToDense:0')
+    # vars = tf.compat.v1.trainable_variables()
+    # vars = [v.eval() for v in vars]
+    # print(vars)
+    # with open('infer_vars.txt', 'a') as file:
+    #     file.write(str(vars[-10:]) + '\n')
     start = time.time()
     labels = sess.run(y, feed_dict={'InputData:0': wav_inputs,
                                     'SeqLen:0': data_len})
+    print(labels)
+    print(wav_inputs.shape)
+
     print(time.time() - start)
     str_decoded = ''.join([get_key(x) for x in labels[0]])
     # Replacing blank label to none
