@@ -11,7 +11,7 @@ num_features = c.LSTM.FEATURES
 num_hidden = c.LSTM.HIDDEN
 batch_size = 1
 num_layers = 3
-num_classes = 43
+num_classes = 91
 
 
 def make_cell(hidden_layer):
@@ -55,16 +55,10 @@ with tf.compat.v1.Session() as sess:
 graph = tf.compat.v1.get_default_graph()
 input_graph_def = graph.as_graph_def()
 
-clear_file = open('export_vars.txt', 'w')
 with tf.compat.v1.Session() as sess:
     tf.compat.v1.global_variables_initializer().run()
     saver = tf.compat.v1.train.Saver()
     saver.restore(sess, tf.train.latest_checkpoint(model_folder))
-
-    vars = tf.compat.v1.trainable_variables()
-    vars = [v.eval() for v in vars]
-    with open('export_vars.txt', 'a') as file:
-        file.write(str(vars[-10:]) + '\n')
 
     # Output model's graph details for reference.
     tf.io.write_graph(sess.graph_def, model_folder, 'graph_lstm.txt', as_text=True)

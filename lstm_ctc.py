@@ -1,12 +1,11 @@
 from __future__ import print_function
 
-import json
 import time
+import utils
 
 import tensorflow as tf
 
 from constants import c
-from data import shuffle_every_epoch, next_batch_training
 from file_logger import FileLogger
 
 # Parameters for index to string
@@ -15,18 +14,8 @@ SPACE_INDEX = 0
 FIRST_INDEX = ord('a') - 1
 
 # decode dictionary
-data_dir = '/home/minhhiu/MyProjects/Compressed Speech Data/full_command_data'
-with open('encode_decode.json', 'r') as loadlabel:
-    label_dic = json.load(loadlabel)
-
-encode_dic = label_dic["encode"]
-
-
-def get_key(val):
-    for key, value in encode_dic.items():
-        if val == value:
-            return key
-    return ''
+data_dir = 'data_record_web.lst'
+dic = utils.load_encode_dic("encode_decode.json")
 
 
 ######
@@ -39,7 +28,7 @@ num_features = c.LSTM.FEATURES
 # Accounting the 0th index +  space + blank label
 # Processing Vietnamese speech require different character range
 
-num_classes = label_dic["char_num"] + 1
+num_classes = dic["char_num"] + 1
 
 # Hyper-parameters
 num_hidden = c.LSTM.HIDDEN
@@ -55,9 +44,12 @@ Dev_DIR = c.LSTM.DEV_PATH
 Train_DIR = c.LSTM.TRAIN_PATH
 Log_DIR = c.LSTM.LOG_PATH
 
+train_meta_data = utils.load_metadata(Train_DIR)
+dev_meta_data = utils.load_metadata(Dev_DIR)
+
 # Validation list and val_batch_size
-dev_list = shuffle_every_epoch(Dev_DIR)
-dev_size = len(dev_list)
+dev_meta_data = utils.shuffle_every_epoch(dev_meta_data)
+dev_size = len(dev_meta_data)
 
 # File log
 file_logger_batch = FileLogger('out_batch.tsv', ['curr_epoch',
@@ -118,7 +110,6 @@ with graph.as_default():
     keep_prob = tf.compat.v1.placeholder(tf.float32)
     W_drop = tf.nn.dropout(W, 1 - keep_prob)
 
-
     # Doing the affine projection
     logits = tf.matmul(outputs, W_drop) + b
     # Reshaping back to the original shape
@@ -169,7 +160,7 @@ with graph.as_default():
     merged_summary_op = tf.compat.v1.summary.merge_all()
 
 # Start training
-clear_file = open('train_vars.txt', 'w')
+# train on one lst file only
 with tf.compat.v1.Session(graph=graph) as sess:
     # Run the initializer
     # Initialize the variables (i.e. assign their default value)
@@ -184,20 +175,22 @@ with tf.compat.v1.Session(graph=graph) as sess:
         # Zero train cost & ler for each epoch
         train_cost = train_ler = 0
         # Shuffle training samples and get their npz path
-        train_list = shuffle_every_epoch(Train_DIR)
+        train_meta_data = utils.shuffle_every_epoch(train_meta_data)
         # Total size of training samples
-        num_examples = len(train_list)
+        num_examples = len(train_meta_data)
         #         print(train_list)
         #         print(num_examples)
         # Go through all samples for each epoch
         num_batches_per_epoch = int(num_examples / batch_size)
         # Shuffle validation samples and get their npz path
-        dev_list = shuffle_every_epoch(Dev_DIR)
+        dev_meta_data = utils.shuffle_every_epoch(dev_meta_data)
 
         for batch in range(num_batches_per_epoch):
             # Get batch samples for training
-            train_inputs, train_targets, train_seq_len, original = next_batch_training(batch_size,
-                                                                                       train_list, batch, Train_DIR)
+            train_inputs, train_targets, train_seq_len, original = utils.next_batch_training(batch_size,
+                                                                                             batch,
+                                                                                             train_meta_data,
+                                                                                             dic["encode"])
             # print(train_inputs.shape)
             # print(train_targets)
             # Feed_dict for training
@@ -225,11 +218,8 @@ with tf.compat.v1.Session(graph=graph) as sess:
                 # Decoding
                 d = sess.run(decoded[0], feed_dict=feed_ler)
                 d_last = tf.compat.v1.sparse_to_dense(d[0], d[2], d[1]).eval()
-                str_decoded = ''.join([get_key(x) for x in d_last[-1]])
-                # Replacing blank label to none
-                str_decoded = str_decoded.replace(get_key(label_dic["char_num"]), '')
-                # Replacing space label to space
-                str_decoded = str_decoded.replace(get_key(0), ' ')
+
+                str_decoded = utils.decode(d_last[-1], dic)
 
                 # Log batch
                 file_logger_batch.write([curr_epoch + 1,
@@ -243,8 +233,10 @@ with tf.compat.v1.Session(graph=graph) as sess:
         train_cost /= num_batches_per_epoch
         train_ler /= (num_batches_per_epoch / num_steps)
         # Validation
-        val_inputs, val_targets, val_seq_len, val_original = next_batch_training(dev_size,
-                                                                                 dev_list, 0, Dev_DIR)
+        val_inputs, val_targets, val_seq_len, val_original = utils.next_batch_training(dev_size,
+                                                                                       0,
+                                                                                       dev_meta_data,
+                                                                                       dic["encode"])
         # print(val_seq_len.shape)
         # print(val_inputs.shape)
         val_feed = {inputs: val_inputs,
@@ -256,11 +248,6 @@ with tf.compat.v1.Session(graph=graph) as sess:
 
         # Save checkpoint when the val_cost reduces.
         if val_cost < val_base:
-            tvars = tf.compat.v1.trainable_variables()
-            with open('train_vars.txt', 'w') as file:
-                tvars = [t.eval() for t in tvars]
-                file.write(str(curr_epoch) + ':\n')
-                file.write(str(tvars[-10:]) + '\n')
             saver.save(sess, './checkpoints/lstm_model', global_step=curr_epoch)
             val_base = val_cost
 
@@ -268,11 +255,8 @@ with tf.compat.v1.Session(graph=graph) as sess:
         d = sess.run(decoded[0], feed_dict=val_feed)
         # Only recover the last sample in validation set.
         d_last = tf.compat.v1.sparse_to_dense(d[0], d[2], d[1]).eval()
-        str_decoded = ''.join([get_key(x) for x in d_last[-1]])
-        # Replacing blank label to none
-        str_decoded = str_decoded.replace(get_key(label_dic["char_num"]), '')
-        # Replacing space label to space
-        str_decoded = str_decoded.replace(get_key(0), ' ')
+
+        str_decoded = utils.decode(d_last[-1], dic)
 
         # Log epoch
         file_logger_epoch.write([curr_epoch + 1,
@@ -292,11 +276,3 @@ with tf.compat.v1.Session(graph=graph) as sess:
         print(log.format(curr_epoch + 1, num_epochs, train_cost, train_ler,
                          val_cost, val_ler, time.time() - start))
         print(' ')
-
-        # with open('train_vars.txt', 'a') as file:
-        #     all_tensors = [tensor for op in tf.compat.v1.get_default_graph().get_operations() for tensor in op.values()]
-        #     file.write(str(curr_epoch) + '\n')
-        #     for var in all_tensors:
-        #         print(type(var))
-        #         print(var.shape)
-        #         file.write(str(var.eval(session=sess)) + '\n')

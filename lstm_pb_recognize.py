@@ -68,7 +68,6 @@ with tf.compat.v1.gfile.FastGFile(pb_PATH, 'rb') as f:
     graph_def.ParseFromString(f.read())
     tf.import_graph_def(graph_def, name='')
 
-# clear_file = open('infer_vars.txt', 'w')
 with tf.compat.v1.Session() as sess:
 
     # Set output tensor
@@ -76,8 +75,6 @@ with tf.compat.v1.Session() as sess:
     # vars = tf.compat.v1.trainable_variables()
     # vars = [v.eval() for v in vars]
     # print(vars)
-    # with open('infer_vars.txt', 'a') as file:
-    #     file.write(str(vars[-10:]) + '\n')
     start = time.time()
     labels = sess.run(y, feed_dict={'InputData:0': wav_inputs,
                                     'SeqLen:0': data_len})

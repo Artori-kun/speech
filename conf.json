@@ -3,8 +3,8 @@
     "FEATURES": 39,
     "HIDDEN": 512,
     "BATCH_SIZE": 16,
-    "DEV_PATH": "/home/minhhiu/MyProjects/Compressed Speech Data/full_command_data/MFCC_39_16khz/dev/",
-    "TRAIN_PATH": "/home/minhhiu/MyProjects/Compressed Speech Data/full_command_data/MFCC_39_16khz/train/",
+    "DEV_PATH": "data_record_web.lst",
+    "TRAIN_PATH": "data_record_web.lst",
     "LOG_PATH": "/home/minhhiu/MyProjects/speech/logs"
   },
   "INFERENCE": {
