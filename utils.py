@@ -79,8 +79,14 @@ def next_batch_training(batch_size, batch, meta_data, encode_dic):
         line = line.split("\t")
 
         data_in = convert_wav_mfcc(line[1], 16000)
-        target, _original = encode(line[3].replace("\n", ''), encode_dic)
-        # seq_len = np.array([len(data_in)])
+        target, _original = encode(line[3].strip("\n"), encode_dic)
+        _seq_len = np.array([len(data_in)][0])
+        if _seq_len < len(target):
+            print("Uh-Oh")
+            print(line[1])
+            print(line[3])
+            print(len(target))
+            print(_seq_len)
         # original = np.array([len(original)])
 
         inputs_batch.append(data_in)
