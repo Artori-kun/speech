@@ -80,21 +80,27 @@ def next_batch_training(batch_size, batch, meta_data, encode_dic):
 
         data_in = convert_wav_mfcc(line[1], 16000)
         target, _original = encode(line[3].strip("\n"), encode_dic)
-        _seq_len = np.array([len(data_in)][0])
+        _seq_len = np.array([len(data_in)])[0]
+        _original = np.asarray([_original])[0]
         if _seq_len < len(target):
-            print("Uh-Oh")
+            print("Uh-Oh, corrupted file !!")
             print(line[1])
-            print(line[3])
-            print(len(target))
-            print(_seq_len)
+            # print(line[3])
+            # print(len(target))
+            # print(_seq_len)
+            inputs_batch.append(inputs_batch[-1])
+            targets.append(targets[-1])
+            seq_len.append(seq_len[-1])
+            original.append(original[-1])
+        else:
+            inputs_batch.append(data_in)
+            targets.append(target)
+            seq_len.append(_seq_len)
+            original.append(_original)
+            if _seq_len > maxlen:
+                maxlen = _seq_len
         # original = np.array([len(original)])
 
-        inputs_batch.append(data_in)
-        targets.append(target)
-        seq_len.append(np.array([len(data_in)])[0])
-        original.append(np.array([_original])[0])
-        if np.array([len(data_in)])[0] > maxlen:
-            maxlen = np.array([len(data_in)])[0]
     # Pad the inputs to the maxlen with 0s
     for i in range(batch_size):
         inputs_batch[i] = np.pad(inputs_batch[i], ((0, maxlen - len(inputs_batch[i])), (0, 0)), mode='constant',
