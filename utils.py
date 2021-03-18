@@ -27,42 +27,41 @@ def load_encode_dic(file_path):
 
 # read the provided lst file
 # return a list of lines in the file
-def load_metadata(meta_file):
-    metadata = []
-
+def load_metadata(meta_file, start, end):
     with open(meta_file, "r", encoding="utf8") as meta:
-        while True:
-            line = meta.readline()
-
-            if line == "":
-                break
-
-            # line_elements = line.split("\t")
-            # print(len(line_elements))
-            # data = {"path": line_elements[1], "transcript": line_elements[3].replace("\n", '')}
-            metadata.append(line)
-
+        metadata = [x for i, x in enumerate(meta) if i in range(start, end)]
     return metadata
 
 
-def shuffle_every_epoch(meta_data):
-    """Return a list of shuffled sample file names.
-        Args:
-            meta_data: list of sample paths (string)
-        Returns:
-            same thing but shuffled
+def get_metadata_len(meta_file):
+    with open(meta_file, "r", encoding="utf8") as meta:
+        lines = meta.readlines()
+    num_line = len(lines)
+    del lines
+    return num_line
+
+
+def shuffle_every_epoch(meta_file):
     """
-    random.shuffle(meta_data)
-    return meta_data
+    Shuffle the metadata file every epoch
+    :param meta_file: file path
+    :return: None
+    """
+    with open(meta_file, "r", encoding="utf8") as fr:
+        lines = fr.readlines()
+    random.shuffle(lines)
+    with open(meta_file, "w", encoding="utf8") as fw:
+        fw.writelines(lines)
+    del lines
 
 
-def next_batch_training(batch_size, batch, meta_data, encode_dic):
+def next_batch_training(batch_size, batch, meta_file, encode_dic):
     """Return batch for training.
         Args:
             batch_size: number of samples per batch (int)
             encode_dic: dictionary used for encoding
             batch: the order of a batch in the epoch (int)
-            meta_data: lst file path
+            meta_file: lst file path
         Returns:
             train_inputs: a batch of mfcc training data [batch_size, maxlen] (float)
             train_targets: a batch of target labels in index form and sparse tuple format (int)
@@ -74,9 +73,11 @@ def next_batch_training(batch_size, batch, meta_data, encode_dic):
     original = []
     seq_len = []
     maxlen = 0
+    meta_data = load_metadata(meta_file, batch * batch_size, (batch + 1) * batch_size)
 
-    for line in meta_data[batch * batch_size:batch_size * (batch + 1)]:
+    for line in meta_data:
         line = line.split("\t")
+        # print(line)
 
         data_in = convert_wav_mfcc(line[1], 16000)
         target, _original = encode(line[3].strip("\n"), encode_dic)
@@ -110,6 +111,7 @@ def next_batch_training(batch_size, batch, meta_data, encode_dic):
     train_seq_len = np.asarray(seq_len)
     # Creating sparse representation to feed the placeholder
     train_targets = sparse_tuple_from(targets)
+    # print("Done reading batch")
     return train_inputs, train_targets, train_seq_len, original
 
 

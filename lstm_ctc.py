@@ -44,12 +44,12 @@ Dev_DIR = c.LSTM.DEV_PATH
 Train_DIR = c.LSTM.TRAIN_PATH
 Log_DIR = c.LSTM.LOG_PATH
 
-train_meta_data = utils.load_metadata(Train_DIR)
-dev_meta_data = utils.load_metadata(Dev_DIR)
+total_train_sample = utils.get_metadata_len(Train_DIR)
+total_dev_sample = utils.get_metadata_len(Dev_DIR)
 
 # Validation list and val_batch_size
-dev_meta_data = utils.shuffle_every_epoch(dev_meta_data)
-dev_size = len(dev_meta_data)
+# total_dev_sample = utils.shuffle_every_epoch(total_dev_sample)
+# dev_size = len(total_dev_sample)
 
 # File log
 file_logger_batch = FileLogger('out_batch.tsv', ['curr_epoch',
@@ -174,22 +174,25 @@ with tf.compat.v1.Session(graph=graph) as sess:
         start = time.time()
         # Zero train cost & ler for each epoch
         train_cost = train_ler = 0
+        val_cost = val_ler = 0
         # Shuffle training samples and get their npz path
-        train_meta_data = utils.shuffle_every_epoch(train_meta_data)
+        utils.shuffle_every_epoch(Train_DIR)
         # Total size of training samples
-        num_examples = len(train_meta_data)
+        # num_examples = total_train_sample
         #         print(train_list)
         #         print(num_examples)
         # Go through all samples for each epoch
-        num_batches_per_epoch = int(num_examples / batch_size)
+        num_batches_per_epoch_train = int(total_train_sample / batch_size)
+        num_batches_per_epoch_dev = int(total_dev_sample / batch_size)
         # Shuffle validation samples and get their npz path
-        dev_meta_data = utils.shuffle_every_epoch(dev_meta_data)
+        utils.shuffle_every_epoch(Dev_DIR)
+        print("Done Shuffling")
 
-        for batch in range(num_batches_per_epoch):
+        for batch in range(num_batches_per_epoch_train):
             # Get batch samples for training
             train_inputs, train_targets, train_seq_len, original = utils.next_batch_training(batch_size,
                                                                                              batch,
-                                                                                             train_meta_data,
+                                                                                             Train_DIR,
                                                                                              dic["encode"])
             # print(train_inputs.shape)
             # print(train_targets)
@@ -206,7 +209,7 @@ with tf.compat.v1.Session(graph=graph) as sess:
             train_cost += batch_cost
             # train_ler += sess.run(ler, feed_dict=feed)
             # Write logs at every iteration
-            summary_writer.add_summary(summary, curr_epoch * num_batches_per_epoch + batch)
+            summary_writer.add_summary(summary, curr_epoch * num_batches_per_epoch_train + batch)
 
             if batch % num_steps == 0 and batch != 0:
                 feed_ler = {inputs: train_inputs,
@@ -228,23 +231,31 @@ with tf.compat.v1.Session(graph=graph) as sess:
                                          train_ler / (batch / num_steps),
                                          original[-1],
                                          str_decoded])
+            # print("Done training a batch")
 
         # Train cost and ler for each epoch
-        train_cost /= num_batches_per_epoch
-        train_ler /= (num_batches_per_epoch / num_steps)
+        train_cost /= num_batches_per_epoch_train
+        train_ler /= (num_batches_per_epoch_train / num_steps)
         # Validation
-        val_inputs, val_targets, val_seq_len, val_original = utils.next_batch_training(dev_size,
-                                                                                       0,
-                                                                                       dev_meta_data,
-                                                                                       dic["encode"])
-        # print(val_seq_len.shape)
-        # print(val_inputs.shape)
-        val_feed = {inputs: val_inputs,
-                    targets: val_targets,
-                    seq_len: val_seq_len,
-                    keep_prob: 1.0}
+        for batch in range(num_batches_per_epoch_dev):
 
-        val_cost, val_ler = sess.run([cost, ler], feed_dict=val_feed)
+            val_inputs, val_targets, val_seq_len, val_original = utils.next_batch_training(total_dev_sample,
+                                                                                           0,
+                                                                                           Dev_DIR,
+                                                                                           dic["encode"])
+            # print(val_seq_len.shape)
+            # print(val_inputs.shape)
+            val_feed = {inputs: val_inputs,
+                        targets: val_targets,
+                        seq_len: val_seq_len,
+                        keep_prob: 1.0}
+
+            batch_cost, batch_ler = sess.run([cost, ler], feed_dict=val_feed)
+            val_cost += batch_cost
+            val_ler += val_ler
+
+        val_cost /= num_batches_per_epoch_dev
+        val_ler /= num_batches_per_epoch_dev
 
         # Save checkpoint when the val_cost reduces.
         if val_cost < val_base:
