@@ -161,6 +161,7 @@ with graph.as_default():
 
 # Start training
 # train on one lst file only
+
 with tf.compat.v1.Session(graph=graph) as sess:
     # Run the initializer
     # Initialize the variables (i.e. assign their default value)

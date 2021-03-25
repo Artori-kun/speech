@@ -3,8 +3,8 @@
     "FEATURES": 39,
     "HIDDEN": 512,
     "BATCH_SIZE": 16,
-    "DEV_PATH": "data_record_web.lst",
-    "TRAIN_PATH": "data_record_web.lst",
+    "DEV_PATH": "data_record_web_copy.lst",
+    "TRAIN_PATH": "data_record_web_copy.lst",
     "LOG_PATH": "/home/minhhiu/MyProjects/speech/logs"
   },
   "INFERENCE": {
