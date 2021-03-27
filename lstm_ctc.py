@@ -44,7 +44,7 @@ num_classes = label_dic["char_num"] + 1
 # Hyper-parameters
 num_hidden = c.LSTM.HIDDEN
 batch_size = c.LSTM.BATCH_SIZE
-num_epochs = 150
+num_epochs = 120
 num_layers = 3
 
 # Calculate ler every [num_steps] batch
@@ -148,7 +148,7 @@ with graph.as_default():
     # Decoded and label error rate
     # Option 2: tf.contrib.ctc.ctc_beam_search_decoder
     # (it's slower but you'll get better results)
-    decoded, log_prob = tf.nn.ctc_greedy_decoder(logits, seq_len)
+    decoded, log_prob = tf.nn.ctc_beam_search_decoder(logits, seq_len)
     # Inaccuracy: label error rate
     ler = tf.reduce_mean(input_tensor=tf.edit_distance(tf.cast(decoded[0], tf.int32), targets))
 
