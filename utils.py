@@ -4,6 +4,7 @@ import librosa
 from python_speech_features import mfcc
 import os
 import random
+import sys
 
 
 def read_audio_from_filename(filename, sample_rate):
@@ -31,6 +32,13 @@ def load_metadata(meta_file, start, end):
     with open(meta_file, "r", encoding="utf8") as meta:
         metadata = [x for i, x in enumerate(meta) if i in range(start, end)]
     return metadata
+
+
+def get_entire_lst(meta_file):
+    with open(meta_file, "r", encoding="utf8") as meta:
+        meta_data = meta.readlines()
+        print(sys.getsizeof(meta_data))
+    return meta_data
 
 
 def get_metadata_len(meta_file):
